@@ -42,10 +42,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="OtherInfo:" />
+                android:text="MSL_Pressure:" />
 
             <TextView
-                android:id="@+id/rawPressure"
+                android:id="@+id/MSLPressure"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />

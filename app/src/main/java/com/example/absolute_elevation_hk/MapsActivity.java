@@ -1,8 +1,6 @@
 package com.example.absolute_elevation_hk;
 
-import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
-import androidx.core.os.LocaleListCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.app.AlertDialog;
@@ -16,14 +14,12 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -34,12 +30,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolygonOptions;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +58,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     TextView GPSElevationText;
     TextView GPSPrecisionText;
     TextView TrueElevationText;
-    TextView RawPressureText;
+    TextView MSLPressureText;
     Button showDT;
     Button holdDT;
     Button calibManual;
@@ -88,6 +78,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private boolean doCalib = true;
 
+    String testDatasetString = "";
+    DecimalFormat df = new DecimalFormat("#.00");
 
     final DelaunayTriangulator[] delaunayTriangulator = new DelaunayTriangulator[1];
 
@@ -99,15 +91,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             float[] values = sensorEvent.values;
             Log.i("Pressure_Output:" , String.valueOf(values[0]));
             functions.writeValueToFile(values[0],"Sensor_Output_Raw_Pressure.txt");
-            DecimalFormat df = new DecimalFormat("#.00");
             pressureValue = values[0];
-            pressureText.setText(String.valueOf(df.format(pressureValue+calibrationNum)));
+            pressureText.setText(String.valueOf(df.format(pressureValue)));
             sensorPressure = pressureValue+calibrationNum;
-            RawPressureText.setText(String.valueOf(df.format(GPSEleAccuracy)));
+            MSLPressureText.setText(String.valueOf(df.format(calcuatedPressure)));
             CalibrationNumText.setText(String.valueOf(df.format(calibrationNum)));
             GPSElevationText.setText(String.valueOf(df.format(GPSElevation)));
             GPSPrecisionText.setText(String.valueOf(df.format(GPSPrecision)));
             TrueElevationText.setText(String.valueOf(df.format(TrueElevation)));
+            pressureCalText.setText(String.valueOf(df.format(sensorPressure)));
+
+
+
 
             //sensorManager.unregisterListener(this, pressureSensor);
         }
@@ -142,7 +137,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         GPSElevationText = (TextView) findViewById(R.id.GPSElevation);
         GPSPrecisionText = (TextView) findViewById(R.id.GPSPrecision);
         TrueElevationText = (TextView) findViewById(R.id.TrueElevation);
-        RawPressureText = (TextView) findViewById(R.id.rawPressure);
+        MSLPressureText = (TextView) findViewById(R.id.MSLPressure);
 
         showDT = (Button) findViewById(R.id.Show);
         holdDT = (Button) findViewById(R.id.hold);
@@ -166,7 +161,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         }
                     }
                 }
-                DecimalFormat df = new DecimalFormat("#.00");
+
                 pressureCalText.setText(String.valueOf(df.format(calcuatedPressure)));
 
                 elevationResult = functions.calculateElevation(sensorPressure,calcuatedPressure);
@@ -207,9 +202,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                             testLocation.setLongitude(point.longitude);
                                             double tempCalibrationParam = CalculateCalbirationParameterManual(delaunayTriangulator,
                                                     testLocation,pressureValue,webPressureList);
+                                            //Store test data set start
+
+                                            for (int i = 0; i<webPressureList.size();i++){
+                                                testDatasetString = testDatasetString + webPressureList.get(i).toString() + ",";
+                                            }
+                                            testDatasetString = testDatasetString + String.valueOf(point.latitude) + "," + String.valueOf(point.longitude) + ",";
+                                            testDatasetString = testDatasetString + String.valueOf(pressureValue) + "," + String.valueOf(calibrationNum);
+                                            functions.writeTestdataValueToFile(testDatasetString,"Test_dataSet_record.txt");
+                                            testDatasetString = "";
+                                            //Store test data set end
+
                                             if (tempCalibrationParam!=0){
                                                 calibrationNum = tempCalibrationParam;
                                                 functions.rewriteValueToFile(calibrationNum,"Sensor_Output_Calibration_Manual.txt");
+                                                calculateMSLPressure();
+                                                pressureCalText.setText(String.valueOf(df.format(calcuatedPressure)));
+                                                sensorPressure = pressureValue+calibrationNum;
+
+                                                elevationResult = functions.calculateElevation(sensorPressure,calcuatedPressure);
+                                                elevationText.setText(String.valueOf(df.format(elevationResult)));
+
                                             }
 
                                             mMap.setOnMapClickListener(null);
@@ -240,6 +253,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         sensorManager = (SensorManager)getSystemService(Context.SENSOR_SERVICE);
 
         pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+
         if (first){
             timestamp = String.valueOf(System.currentTimeMillis());
             first = false;
@@ -444,7 +458,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * Get pressure output from built-in barometer
      */
     public void getPressureFormSensor(){
-        sensorManager.registerListener(sensorEventListener, pressureSensor, simpleRate.get_SENSOR_RATE_NORMAL());
+        sensorManager.registerListener(sensorEventListener, pressureSensor, simpleRate.get_SENSOR_RATE_SLOW());
     }
 
     /**
@@ -541,12 +555,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 trueElevation  = elevationMatrix.get(index_N2-1,index_E2-1) - 1.3;
                 CalibrationParameter = Math.pow((1-trueElevation/44330), 5.255)*myCalcuatedPressure - mysensorPressure;
                 Log.i("Calibration Paramter",String.valueOf(CalibrationParameter));
-
+                testDatasetString = testDatasetString + String.valueOf(myCalcuatedPressure) + "," + String.valueOf(trueElevation) + ",";
 
             }else{ }
 
         }else{ }
         TrueElevation = trueElevation;
         return CalibrationParameter;
+    }
+
+    public void calculateMSLPressure(){
+        if (delaunayTriangulator != null && delaunayTriangulator[0].getPointSet().size()!=0) {
+            showDelaunayTriangulatorInMap(delaunayTriangulator);
+            if (myCurrentLocaiton != null) {
+                Triangle2D triangle = functions.PointInWhichTriangle2D(delaunayTriangulator, myCurrentLocaiton);
+                if (triangle != null) {
+//                        showCurrentLocationAndTriangularInMap(triangle);
+                    calcuatedPressure = functions.CalculatePressureBasedOnIDW(delaunayTriangulator, myCurrentLocaiton, webPressureList);
+                } else {
+                    Edge2D nearestEdge = functions.PointNearstEdge(delaunayTriangulator, myCurrentLocaiton);
+                    calcuatedPressure = functions.CalculatePressureBasedOnIDW(delaunayTriangulator, myCurrentLocaiton, webPressureList);
+                }
+            }
+        }
     }
 }

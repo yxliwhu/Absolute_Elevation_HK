@@ -80,6 +80,13 @@ public class functions {
         WriteFile.writeTxtToFiles("",fileName,context);
     }
 
+    public static void writeTestdataValueToFile(String value, String fileName) {
+
+        long CurrentTime = System.currentTimeMillis();
+        String context = CurrentTime + "," + value + "\n";
+        WriteFile.writeTxtToFiles("", fileName, context);
+    }
+
     /**
      * Record value to the special direction (rewrite)
      * @param value : value
