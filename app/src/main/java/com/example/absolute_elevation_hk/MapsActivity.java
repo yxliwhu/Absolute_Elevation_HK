@@ -83,6 +83,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     final DelaunayTriangulator[] delaunayTriangulator = new DelaunayTriangulator[1];
 
+    List<Double> rawPressureValues = new ArrayList<>();
+
 
     private SensorEventListener sensorEventListener = new SensorEventListener() {
 
@@ -100,11 +102,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             GPSPrecisionText.setText(String.valueOf(df.format(GPSPrecision)));
             TrueElevationText.setText(String.valueOf(df.format(TrueElevation)));
             pressureCalText.setText(String.valueOf(df.format(sensorPressure)));
-
-
-
-
-            //sensorManager.unregisterListener(this, pressureSensor);
         }
 
         @Override
@@ -274,6 +271,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 getPressureFormSensor();
                 webPressureList.clear();
                 delaunayTriangulator[0] = getDelaunayTriangulation(pointSet);
+                // add store data code
+                String tempString = "";
+                for (int i = 0; i < rawPressureValues.size();i++){
+                    if (i != rawPressureValues.size()-1){
+                        tempString = tempString + rawPressureValues.get(i).toString() + ",";
+                    }else{
+                        tempString = tempString + rawPressureValues.get(i).toString();
+                    }
+                }
+                functions.writeTestdataValueToFile(tempString,"datafromwebsite.txt");
             }
         },0,updateInterval);
         if (doCalib){
@@ -450,7 +457,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .permitAll().build();
             StrictMode.setThreadPolicy(policy);
             //your codes here
-            CalculateElevation.getInfoFromWeb("http://www.weather.gov.hk/wxinfo/ts/text_readings_e.htm",timestamp);
+            rawPressureValues = CalculateElevation.getInfoFromWeb("http://www.weather.gov.hk/wxinfo/ts/text_readings_e.htm",timestamp);
         }
     }
 
